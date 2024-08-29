@@ -1,6 +1,7 @@
 import pygame
 import random
 import time
+from variable import FOLDER_SOUND
 
 # Inicialização do Pygame
 pygame.init()
@@ -55,6 +56,7 @@ class Bullet:
 # Funções Personalizadas
 def main_menu():
     """Exibe o menu principal do jogo."""
+    main_menu_music = pygame.mixer.Sound(FOLDER_SOUND / 'main_menu.mp3').play()
     menu_running = True
     while menu_running:
         screen.fill(BLACK)
@@ -70,6 +72,7 @@ def main_menu():
                 quit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
+                    main_menu_music.stop()
                     menu_running = False  # Inicia o jogo
 
 def spawn_enemy(enemies):
@@ -102,6 +105,7 @@ def check_collision_player(enemies, player_rect):
 
 def game_loop():
     """Loop principal do jogo."""
+    ambient_music = pygame.mixer.Sound(FOLDER_SOUND / 'Constelação.mp3').play(loops=-1).set_volume(0.5)
     player_rect = pygame.Rect(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50, 50, 50)  # Representação do jogador
     player_speed = 8
 
