@@ -127,6 +127,7 @@ def player_shoot(bullets, x, y):
     """Cria um novo tiro do jogador."""
     bullet = Bullet(x + 22, y)  # Ajuste a posição do tiro para o centro do jogador
     bullets.append(bullet)
+    pygame.mixer.Sound(FOLDER_SOUND / 'shoot.mp3').play(0).set_volume(0.4)
 
 def check_collision(bullets, enemies):
     """Verifica colisões entre tiros e inimigos e remove ambos em caso de colisão."""
@@ -149,7 +150,7 @@ def check_collision_player(enemies, player_rect):
 def game_loop():
     """Loop principal do jogo."""
     ambient_music = pygame.mixer.Sound(FOLDER_SOUND / 'Constelação.mp3').play(loops=-1).set_volume(0.5)
-    player_rect = player_image.get_rect(midbottom=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 10))  # Usa o sprite do jogador
+    player_rect = player_image.get_rect(midbottom=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))  # Usa o sprite do jogador
     player_speed = 8
 
     enemies = []  # Lista para armazenar os inimigos
