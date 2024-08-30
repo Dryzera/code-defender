@@ -1,7 +1,7 @@
 import pygame
 import random
 import time
-from variable import FOLDER_SOUND, FOLDER_ASSETS, WHITE, BLACK, RED, GREEN, BLUE, volume
+from variable import FOLDER_SOUND, FOLDER_ASSETS, FOLDER_FONTS, WHITE, BLACK, RED, GREEN, BLUE, volume, volume_texts
 
 # Inicialização do Pygame
 pygame.init()
@@ -33,8 +33,15 @@ background_main = pygame.transform.scale(background_main, (SCREEN_WIDTH, SCREEN_
 bullet_sprite = pygame.image.load(FOLDER_ASSETS / 'shoot.png')
 bullet_sprite = pygame.transform.scale(bullet_sprite, (30, 40))  # Ajuste o tamanho conforme necessário
 
+
+# fonts
 font = pygame.font.SysFont(None, 55)
-button_font = pygame.font.SysFont(None, 45)
+font_menu_game = pygame.font.SysFont(None, 5)
+button_font = pygame.font.Font(FOLDER_FONTS / 'Blank Place.otf', 30)
+font_titulo = pygame.font.Font(FOLDER_FONTS / 'BADABB__.TTF', 75)
+text_volume_font = pygame.font.SysFont(None, 25)
+text_pontuation_font = pygame.font.Font(FOLDER_FONTS / 'Blank Place.otf', 30)
+
 
 # Classe Inimigo
 class Enemy:
@@ -82,9 +89,12 @@ def draw_text(text, font, color, surface, x, y):
 
 # Função para o Menu Principal
 def main_menu():
+    global current_volume_index  # Adicionar a declaração global aqui
+    global volume
+
     main_menu_music = pygame.mixer.Sound(FOLDER_SOUND / 'main_menu.mp3')
     main_menu_music.play(-1)
-    
+
     start_button = pygame.Rect(300, 200, 200, 50)
     volume_button = pygame.Rect(300, 300, 200, 50)
     quit_button = pygame.Rect(300, 400, 200, 50)
@@ -94,16 +104,20 @@ def main_menu():
         screen.blit(background_main, (0, 0))
         
         # Adiciona o texto do menu
-        menu_text = font.render('Code Defender', True, GREEN)
-        screen.blit(menu_text, (SCREEN_WIDTH // 2 - menu_text.get_width() // 2, 80))  # Ajusta a posição do texto do menu
+        menu_text = font_titulo.render('Code Defender', True, GREEN)
+        screen.blit(menu_text, (SCREEN_WIDTH // 2 - menu_text.get_width() // 2, 80))
 
         # Desenhar botões
         pygame.draw.rect(screen, GREEN, start_button, border_radius=20)
         pygame.draw.rect(screen, GREEN, volume_button, border_radius=20)
         pygame.draw.rect(screen, RED, quit_button, border_radius=20)
-        draw_text('Iniciar Jogo', button_font, BLACK, screen, 400, 225)
-        draw_text('Volume', button_font, BLACK, screen, 400, 325)
-        draw_text('Sair do Jogo', button_font, BLACK, screen, 400, 425)
+        draw_text('Start Game', button_font, BLACK, screen, 400, 225)
+        draw_text('Music Volume', button_font, BLACK, screen, 400, 325)
+        draw_text('Exit', button_font, BLACK, screen, 400, 425)
+
+        # Exibir o volume atual
+        draw_text(f"Volume: {volume_texts[current_volume_index]}", text_volume_font, WHITE, screen,
+                   SCREEN_WIDTH - 70, SCREEN_HEIGHT - 20)
 
         pygame.display.flip()
 
@@ -118,15 +132,14 @@ def main_menu():
                     game_loop()  # Inicia o loop do jogo
                 if volume_button.collidepoint(event.pos):
                     # Alterna o nível de volume
-                    global current_volume_index
                     current_volume_index = (current_volume_index + 1) % len(volume_levels)
                     main_menu_music.set_volume(volume_levels[current_volume_index])
-                    global volume
                     volume = volume_levels[current_volume_index]
-                    print(f"Volume: {volume_levels[current_volume_index] * 100}%")
                 if quit_button.collidepoint(event.pos):
                     pygame.quit()
                     quit()
+
+
 
 def spawn_enemy(enemies):
     """Cria um novo inimigo e o adiciona à lista."""
@@ -211,7 +224,7 @@ def game_loop():
 
         # Spawn de Inimigos
         spawn_timer += 1
-        if spawn_timer >= 90:  # A cada 90 frames
+        if spawn_timer >= 70:  # A cada 90 frames
             spawn_enemy(enemies)  # Adiciona um inimigo à lista
             spawn_timer = 0  # Reseta o temporizador
 
@@ -222,6 +235,9 @@ def game_loop():
         for enemy in enemies:
             enemy.move()  # Mover o inimigo para baixo
             enemy.draw()  # Desenha o inimigo na tela
+            if enemy.rect.y > SCREEN_HEIGHT:
+                score -= 2
+                pygame.mixer.Sound(FOLDER_SOUND / 'unpoint.mp3').play()
 
         # Atualizar e Desenhar Tiros
         for bullet in bullets:
@@ -248,24 +264,15 @@ def game_loop():
         screen.blit(player_image, player_rect.topleft)  # Usa o sprite do jogador
 
         # Mostrar Pontuação
-        draw_text(f"Pontuação: {score}", font, WHITE, screen, SCREEN_WIDTH // 2, 50)
-
-        # Adicionar Botão de Menu
-        menu_button = pygame.Rect(SCREEN_WIDTH - 80, 20, 60, 30)
-        pygame.draw.rect(screen, GREEN, menu_button, border_radius=10)
-        draw_text('Menu', button_font, BLACK, screen, SCREEN_WIDTH - 50, 35)
+        draw_text(f"Score: {score}", text_pontuation_font, WHITE, screen, SCREEN_WIDTH // 2, 50)
 
         pygame.display.update()
 
         # Eventos do Botão de Menu
         for event in pygame.event.get():
+            print(event)
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                print('cheg')
-                if menu_button.collidepoint(event.pos):
-                    ambient_music.stop()
-                    main_menu()  # Volta para o menu principal
 
         # Controlar o FPS
         clock.tick(FPS)
