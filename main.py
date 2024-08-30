@@ -262,7 +262,6 @@ def game_loop():
 
         # Quit the game when the window is closed
         for event in pygame.event.get():
-            print(event)
             if event.type == pygame.QUIT:
                 running = False
 
