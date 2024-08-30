@@ -1,7 +1,7 @@
 import pygame
 import random
 import time
-from variable import FOLDER_SOUND, FOLDER_ASSETS, WHITE, BLACK, RED, GREEN, BLUE
+from variable import FOLDER_SOUND, FOLDER_ASSETS, WHITE, BLACK, RED, GREEN, BLUE, volume
 
 # Inicialização do Pygame
 pygame.init()
@@ -115,17 +115,18 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button.collidepoint(event.pos):
                     main_menu_music.stop()
-                    menu_running = False  # Inicia o jogo
+                    game_loop()  # Inicia o loop do jogo
                 if volume_button.collidepoint(event.pos):
                     # Alterna o nível de volume
                     global current_volume_index
                     current_volume_index = (current_volume_index + 1) % len(volume_levels)
                     main_menu_music.set_volume(volume_levels[current_volume_index])
+                    global volume
+                    volume = volume_levels[current_volume_index]
                     print(f"Volume: {volume_levels[current_volume_index] * 100}%")
-                    print(pygame.mixer.music.get_volume())
-
                 if quit_button.collidepoint(event.pos):
                     pygame.quit()
+                    quit()
 
 def spawn_enemy(enemies):
     """Cria um novo inimigo e o adiciona à lista."""
@@ -140,34 +141,38 @@ def player_shoot(bullets, x, y):
 
 def check_collision(bullets, enemies):
     """Verifica colisões entre tiros e inimigos e remove ambos em caso de colisão."""
-    for bullet in bullets[:]:  # Itera sobre uma cópia da lista para evitar problemas durante a remoção
-        for enemy in enemies[:]:  # Itera sobre uma cópia da lista para evitar problemas durante a remoção
+    collision_occurred = False
+    for bullet in bullets:
+        for enemy in enemies:
             if bullet.rect.colliderect(enemy.rect):
-                bullets.remove(bullet)
-                enemies.remove(enemy)
-                return True  # Retorna True para indicar que uma colisão ocorreu
-    return False
+                bullets.remove(bullet)  # Remove o tiro
+                enemies.remove(enemy)  # Remove o inimigo
+                collision_occurred = True
+                break  # Sai do loop após remover o tiro para evitar erros de iteração
+    return collision_occurred
 
 def check_collision_player(enemies, player_rect):
-    """Verifica colisões entre o jogador e os inimigos."""
-    for enemy in enemies[:]:  # Itera sobre uma cópia da lista para evitar problemas durante a remoção
-        if enemy.rect.colliderect(player_rect):
-            enemies.remove(enemy)
-            return True  # Retorna True para indicar que uma colisão ocorreu
-    return False
+    """Verifica colisões entre o jogador e inimigos."""
+    for enemy in enemies:
+        if player_rect.colliderect(enemy.rect):
+            enemies.remove(enemy)  # Remove o inimigo que colidiu com o jogador
+            return True  # Colisão ocorreu
+    return False  # Sem colisão
 
 def game_over():
     screen.fill(BLUE)
     font = pygame.font.SysFont(None, 55)
     text = font.render("GAME OVER", True, WHITE)
-    screen.blit(text, (100, 250))
+    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
     pygame.display.update()
+    pygame.mixer.Sound(FOLDER_SOUND / 'game_over.mp3').play()
     time.sleep(2)
-    pygame.quit()
+    main_menu()  # Retorna ao menu principal após o "Game Over"
 
 def game_loop():
     """Loop principal do jogo."""
-    ambient_music = pygame.mixer.Sound(FOLDER_SOUND / 'Constelação.mp3').play(loops=-1).set_volume(0.5)
+    ambient_music = pygame.mixer.Sound(FOLDER_SOUND / 'game_music.mp3')
+    ambient_music.play(loops=-1).set_volume(volume)
     player_rect = player_image.get_rect(midbottom=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))  # Usa o sprite do jogador
     player_speed = 8
 
@@ -190,7 +195,9 @@ def game_loop():
                     score -= 5
 
         if score < 0:
+            ambient_music.stop()
             game_over()
+            return  # Retorna para o menu principal após o game over
                         
         # Movimento do Jogador
         keys = pygame.key.get_pressed()
@@ -203,24 +210,23 @@ def game_loop():
         player_rect.x = max(0, min(SCREEN_WIDTH - player_rect.width, player_rect.x))  # Impede que o jogador saia da tela
 
         # Spawn de Inimigos
-        if spawn_timer >= 90:  # A cada 60 quadros (1 segundo)
-            spawn_enemy(enemies)
-            spawn_timer = 0
-        else:
-            spawn_timer += 1
+        spawn_timer += 1
+        if spawn_timer >= 90:  # A cada 90 frames
+            spawn_enemy(enemies)  # Adiciona um inimigo à lista
+            spawn_timer = 0  # Reseta o temporizador
 
         # Desenhar o Fundo
         screen.blit(background_game, (0, 0))  # Fundo estático
 
-        # Movimento e Desenho dos Inimigos
+        # Atualizar e Desenhar Inimigos
         for enemy in enemies:
-            enemy.move()
-            enemy.draw()
+            enemy.move()  # Mover o inimigo para baixo
+            enemy.draw()  # Desenha o inimigo na tela
 
-        # Movimento e Desenho dos Tiros
+        # Atualizar e Desenhar Tiros
         for bullet in bullets:
-            bullet.move()
-            bullet.draw()
+            bullet.move()  # Move o tiro para cima
+            bullet.draw()  # Desenha o tiro na tela
 
         # Remover Inimigos Fora da Tela
         enemies = [enemy for enemy in enemies if not enemy.is_off_screen()]
@@ -228,33 +234,45 @@ def game_loop():
         # Remover Tiros Fora da Tela
         bullets = [bullet for bullet in bullets if not bullet.is_off_screen()]
 
-        # Verificação de Colisão
+        # Verificar Colisões
         if check_collision(bullets, enemies):
-            score += 10  # Incrementa a pontuação em 10 para cada inimigo destruído
+            score += 10  # Incrementa a pontuação para cada inimigo destruído
+            pygame.mixer.Sound(FOLDER_SOUND / 'point.mp3').play()
 
-        # Verificação de Colisão com o Jogador
+        # Verificar Colisões com o Jogador
         if check_collision_player(enemies, player_rect):
-            score -= 10  # Diminui a pontuação em 10 para cada colisão com o jogador
-            if score < 0:
-                game_over()
+            score -= 10  # Diminui a pontuação para cada colisão com o jogador
+            pygame.mixer.Sound(FOLDER_SOUND / 'unpoint.mp3').play()
 
-        # Desenha o Jogador
-        screen.blit(player_image, player_rect.topleft)  # Desenha o jogador com o sprite
+        # Desenhar o Jogador
+        screen.blit(player_image, player_rect.topleft)  # Usa o sprite do jogador
 
-        # Exibe a Pontuação
-        font = pygame.font.SysFont(None, 35)
-        score_text = font.render(f"Pontuação: {score}", True, WHITE)
-        screen.blit(score_text, (10, 10))
+        # Mostrar Pontuação
+        draw_text(f"Pontuação: {score}", font, WHITE, screen, SCREEN_WIDTH // 2, 50)
 
-        draw_text('menu', button_font, BLUE, screen, 758, 30)
-        pygame.display.update()  # Atualiza a tela
+        # Adicionar Botão de Menu
+        menu_button = pygame.Rect(SCREEN_WIDTH - 80, 20, 60, 30)
+        pygame.draw.rect(screen, GREEN, menu_button, border_radius=10)
+        draw_text('Menu', button_font, BLACK, screen, SCREEN_WIDTH - 50, 35)
 
-        # Controle de FPS
+        pygame.display.update()
+
+        # Eventos do Botão de Menu
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                print('cheg')
+                if menu_button.collidepoint(event.pos):
+                    ambient_music.stop()
+                    main_menu()  # Volta para o menu principal
+
+        # Controlar o FPS
         clock.tick(FPS)
 
     pygame.quit()
 
-# Execução do Jogo
-if __name__ == "__main__":
-    main_menu()  # Exibe o menu principal
-    game_loop()  # Inicia o loop principal do jogo
+# Inicializar o Menu Principal
+
+if __name__ == '__main__':
+    main_menu()

@@ -3,3 +3,5 @@ ATENÇÃO PARA MIM NO FUTURO
 as musicas que eu selecionei nescessitam de licença, certifique-se de arrumar outras
 
 shoot.mp3 - livre
+game_over.mp3 - livre
+point.mp3 - livre
